@@ -1,44 +1,57 @@
-import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom';
-import Instruments from './Instrumentslist';
+import React, { useEffect, useState } from "react";
+import Instruments from "./Instrumentslist";
 
 function StocksPage() {
+  const [instruments, setInstruments] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    let [instruments  , setInstruments] = useState(null );
+  useEffect(() => {
+    const fetchInstruments = async () => {
+      try {
+        const response = await fetch(
+          "https://prototype.sbulltech.com/api/v2/instruments",
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
 
-    useEffect(()=>{
-            var url = "https://prototype.sbulltech.com/api/v2/instruments";
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
 
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", url);
+        const textData = await response.text();
+        const lines = textData.split("\n");
 
-            xhr.setRequestHeader("Accept", "application/json");
+        const data = lines
+          .map((line) => {
+            const [Symbol, Name, Sector, Validtill] = line.split(",");
+            return { Symbol, Name, Sector, Validtill };
+          })
+          .filter((item) => item.Symbol) // Filters out invalid rows (empty strings)
+          .slice(1); // Remove the first row, which is the header
 
-            xhr.onreadystatechange = function () 
-            {
-                if (xhr.readyState === 4) {
-                        console.log(xhr.status);
-                        let x = xhr.responseText;
+        setInstruments(data);
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
 
-                        x = x.split("\n");
-                        let sym = x.map( (val)=>{ return val.split(",")  })
-                        let data = sym.map( (val)=>{ return {Symbol:val[0] , Name:val[1] , Sector : val[2] , Validtill : val[3]} } );
-                        data.shift();
-                        data.pop();
-                        setInstruments(data);
+    fetchInstruments();
+  }, []);
 
-                }
-            };
-
-            xhr.send();
-    } , [])
-
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
-  <div>
-    <Instruments instruments={instruments}/>
-  </div>
-  )
+    <div>
+      <Instruments instruments={instruments} />
+    </div>
+  );
 }
 
-export default StocksPage
+export default StocksPage;

@@ -1,51 +1,54 @@
-import React from 'react'
-import { useState,useEffect } from 'react';
-import { useParams } from 'react-router-dom'
-import Instruments from './Instrumentslist';
-import QuotesPage from './QuotesPage';
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import Instruments from "./Instrumentslist";
 
-let Searchpage = () => {
-    let { searchVal } = useParams();
-    let [instruments  , setInstruments] = useState(null );
+const SearchPage = () => {
+  let { searchVal } = useParams();
+  let [instruments, setInstruments] = useState(null);
 
+  useEffect(() => {
+    const url = "https://prototype.sbulltech.com/api/v2/instruments";
 
-    useEffect(()=>{
-            var url = "https://prototype.sbulltech.com/api/v2/instruments";
+    fetch(url, {
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then((response) => response.text()) // Fetching as text since it's CSV format
+      .then((text) => {
+        let rows = text.split("\n");
+        let sym = rows.map((val) => val.split(","));
+        let data = sym.map((val) => ({
+          Symbol: val[0],
+          Name: val[1],
+          Sector: val[2],
+          Validtill: val[3],
+        }));
+        data.shift();
+        data.pop();
 
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", url);
+        // Filter based on search value
+        data = data.filter((inst) => {
+          return (
+            inst.Symbol.toLowerCase().startsWith(searchVal.toLowerCase()) &&
+            inst.Symbol.toLowerCase().includes(searchVal.toLowerCase())
+          );
+        });
+        setInstruments(data);
+      })
+      .catch((error) => console.error("Error fetching data:", error));
+  }, [searchVal]);
 
-            xhr.setRequestHeader("Accept", "application/json");
+  return (
+    <div>
+      {instruments != null && instruments.length > 0 && (
+        <Instruments instruments={instruments} />
+      )}
+      {instruments && instruments.length === 0 && (
+        <h1> NO DATA FOUND , PLEASE TRY FOR DIFFERENT</h1>
+      )}
+    </div>
+  );
+};
 
-            xhr.onreadystatechange = function () 
-            {
-                if (xhr.readyState === 4) {
-                        console.log(xhr.status);
-                        let x = xhr.responseText;
-
-                        x = x.split("\n");
-                        let sym = x.map( (val)=>{ return val.split(",")  })
-                        let data = sym.map( (val)=>{ return {Symbol:val[0] , Name:val[1] , Sector : val[2] , Validtill : val[3]} } );
-                        data.shift();
-                        data.pop();
-                        data = data.filter((inst)=>{ return (inst.Symbol.startsWith(searchVal)  && inst.Symbol.includes(searchVal))})
-                        setInstruments(data);
-                }
-            };
-
-            xhr.send();
-    } , [searchVal])
-  
-    return (
-      <div>
-
-         {instruments != null && instruments.length>0 && <Instruments instruments={instruments}/>}
-
-         {instruments && instruments.length==0 && <h1> NO DATA FOUND , PLEASE TRY FOR DIFFERENT</h1>}
-
-
-      </div>
-    );
-  };
-
-export default Searchpage
+export default SearchPage;
